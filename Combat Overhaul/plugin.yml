@@ -1,0 +1,7 @@
+name: CombatOverhaul
+main: net.libercraft.combatoverhaul.Main
+version: 1.0
+commands:
+  get:
+    description: obtain an item from the mystical weapons plugin
+    usage: /get [item] <name>
