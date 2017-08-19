@@ -21,18 +21,16 @@ public class LavaSpell extends BaseSpell implements SpellProjectile {
 	public double radius;
 	public double damage;
 
-	public LavaSpell(Main plugin, Player player) {
-		onCast(plugin, player);
-		speed = 1.5;
+	public LavaSpell(Main plugin, Player player, int cost) {
+		speed = 0.7;
 		radius = 2.5;
 		damage = 25;
-		cost = 1;
+		onCast(plugin, player, cost);
 		initialiseProjectile();
 	}
 
-	public static void handEffect(Location location) {
-		// TODO Auto-generated method stub
-		
+	public static void handEffect(Player player, Location location) {
+		player.spawnParticle(Particle.SMOKE_NORMAL, location, 1, 0.0, 0.0, 0.0, 0.0);
 	}
 	
 	@Override
@@ -77,7 +75,7 @@ public class LavaSpell extends BaseSpell implements SpellProjectile {
 		world.spawnParticle(Particle.EXPLOSION_LARGE, location, 10, 1, 1, 1, 0.1);
 		
 		// Flight effect on targets
-		for (LivingEntity target:getTargets(location, 1.5)) {
+		for (LivingEntity target:getTargets(location, radius)) {
 			target.setFireTicks(50);
 		}
 		

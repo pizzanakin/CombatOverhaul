@@ -12,10 +12,8 @@ import net.libercraft.combatoverhaul.Tracer;
 
 public class WallSpell extends BaseSpell implements Tracer {
 
-	public WallSpell(Main plugin, Player player) {
-		onCast(plugin, player);
-		
-		cost = 1;
+	public WallSpell(Main plugin, Player player, int cost) {
+		onCast(plugin, player, cost);
 		
 		// Determine the location of the middle of the wall, 4 blocks away from the player
 		Vector vector = caster.getPlayer().getEyeLocation().getDirection().clone().setY(0);
@@ -86,7 +84,7 @@ public class WallSpell extends BaseSpell implements Tracer {
 		}.runTaskLater(plugin, 15);
 	}
 	
-	public static void handEffect(Location location) {
+	public static void handEffect(Player player, Location location) {
 		// TODO Auto-generated method stub
 		
 	}

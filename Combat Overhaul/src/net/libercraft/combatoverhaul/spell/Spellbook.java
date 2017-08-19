@@ -1,42 +1,45 @@
 package net.libercraft.combatoverhaul.spell;
 
 import org.bukkit.entity.Player;
+import org.bukkit.util.Vector;
 
 import net.libercraft.combatoverhaul.Main;
+import net.libercraft.combatoverhaul.Tracer;
 import net.libercraft.combatoverhaul.player.Caster;
 
-public enum Spellbook {
-	FIRE("Ignis"),
-	WATER("Water Splash"),
-	LAVA("Lava Ball"),
-	ICE("Ice Spike"),
-	TELEPORT("Teleport"),
-	WALL("Wall"),
-	ENERGY("Energy Strike");
+public enum Spellbook implements Tracer {
+	FIRE("Ignis", 1),
+	WATER("Water Splash", 1),
+	LAVA("Lava Ball", 2),
+	ICE("Ice Spike", 2),
+	TELEPORT("Teleport", 1),
+	WALL("Wall", 1),
+	ENERGY("Energy Strike", 2);
 	
 
 	public String itemName;
 	public int cost;
 	
-	Spellbook(String itemName) {
+	Spellbook(String itemName, int cost) {
 		this.itemName = itemName;
+		this.cost = cost;
 	}
 	
 
 	public BaseSpell cast(Main plugin, Player player) {
 		switch (this) {
 		case FIRE:
-			return new FireSpell(plugin, player);
+			return new FireSpell(plugin, player, cost);
 		case WATER:
-			return new WaterSpell(plugin, player);
+			return new WaterSpell(plugin, player, cost);
 		case LAVA:
-			return new LavaSpell(plugin, player);
+			return new LavaSpell(plugin, player, cost);
 		case ICE:
-			return new IceSpell(plugin, player);
+			return new IceSpell(plugin, player, cost);
 		case ENERGY:
-			return new EnergySpell(plugin, player);
+			return new EnergySpell(plugin, player, cost);
 		case TELEPORT:
-			return new TeleportSpell(plugin, player);
+			return new TeleportSpell(plugin, player, cost);
 		default:
 			return null;
 		}
@@ -45,9 +48,9 @@ public enum Spellbook {
 	public BaseSpell dualCast(Main plugin, Player player) {
 		switch (this) {
 		case FIRE:
-			return new LavaSpell(plugin, player);
+			return new LavaSpell(plugin, player, cost);
 		case WATER:
-			return new IceSpell(plugin, player);
+			return new IceSpell(plugin, player, cost);
 		default:
 			return null;
 		}

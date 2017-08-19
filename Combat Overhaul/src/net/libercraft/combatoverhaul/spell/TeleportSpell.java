@@ -13,9 +13,8 @@ public class TeleportSpell extends BaseSpell {
 	Location oldLoc;
 	Location newLoc;
 	
-	public TeleportSpell(Main plugin, Player player) {
-		onCast(plugin, player);
-		cost = 1;
+	public TeleportSpell(Main plugin, Player player, int cost) {
+		onCast(plugin, player, cost);
 
 		player.getWorld().spawnParticle(Particle.SMOKE_NORMAL, caster.getPlayer().getLocation(), 20, 0.2, 0.2, 0.2, 0.05);
 		Location loc = caster.getPlayer().getLocation().clone();
@@ -33,9 +32,8 @@ public class TeleportSpell extends BaseSpell {
 		cast = false;
 	}
 
-	public static void handEffect(Location location) {
-		// TODO Auto-generated method stub
-		
+	public static void handEffect(Player player, Location location) {
+		player.spawnParticle(Particle.REDSTONE, location, 0, 0.05, 0.47, 0.34, 1.0);
 	}
 
 	@Override

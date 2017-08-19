@@ -14,8 +14,10 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 import net.libercraft.combatoverhaul.Main;
-import net.libercraft.combatoverhaul.particleanimator.ParticleAnimator;
-import net.libercraft.combatoverhaul.particleanimator.ParticleAnimator.Animation;
+import net.libercraft.combatoverhaul.particleanimator.ParticleAnimation;
+import net.libercraft.combatoverhaul.particleanimator.ParticleAnimation.Animation;
+import net.libercraft.combatoverhaul.particleanimator.ParticleAnimation.Shape;
+import net.libercraft.combatoverhaul.particleanimator.ParticleSprite;
 import net.libercraft.combatoverhaul.player.Caster;
 
 public class FireSpell extends BaseSpell implements SpellProjectile {
@@ -23,22 +25,20 @@ public class FireSpell extends BaseSpell implements SpellProjectile {
 	public double speed;
 	public double radius;
 	public double damage;
-	private int frame;
-	private int frame1;
 	
-	public FireSpell(Main plugin, Player player) {
-		onCast(plugin, player);
-		speed = 0.1;
+	private ParticleAnimation flameAnimation = new ParticleAnimation(ParticleSprite.SINGLE_FLAME, Animation.TWIST, Shape.CROSS_FOUR, 0.2, 0, 0.3);
+	private ParticleAnimation smokeAnimation = new ParticleAnimation(ParticleSprite.SINGLE_SMOKE, Animation.SINUS, Shape.CROSS_FOUR, 0.5, 0.0, 1);
+	
+	public FireSpell(Main plugin, Player player, int cost) {
+		speed = 0.6;
 		radius = 2;
 		damage = 10;
-		cost = 1;
-		frame = 0;
-		frame1 = 0;
+		onCast(plugin, player, cost);
 		initialiseProjectile();
 	}
 
-	public static void handEffect(Caster caster, Location location) {
-		caster.getPlayer().spawnParticle(Particle.FLAME, location, 4, 0.025, 0.025, 0.025, 0.00);
+	public static void handEffect(Player player, Location location) {
+		player.spawnParticle(Particle.FLAME, location, 4, 0.025, 0.025, 0.025, 0.00);
 	}
 	
 	@Override
@@ -53,17 +53,20 @@ public class FireSpell extends BaseSpell implements SpellProjectile {
 
 	@Override
 	public void onFlightEffect(World world, Location location, Vector vector) {
-		
+		boolean useAnimation = true;
+
 		// Flight particles
-		frame = ParticleAnimator.animate(Particle.FLAME, location.clone(), Animation.TURN, 1, 0.0, 0.0, 0.0, 0.0, frame, vector, "PLUS");
-		frame1 = ParticleAnimator.animate(Particle.SMOKE_NORMAL, location.clone(), Animation.SINUS, 1, 0.0, 0.0, 0.0, 0.0, frame1, vector, "PLUS");
-		//world.spawnParticle(Particle.FLAME, location, 5, 0.05, 0.05, 0.05, 0.00);
-		world.spawnParticle(Particle.FLAME, location, 1, 0.1, 0.1, 0.1, 0.0);
-		world.spawnParticle(Particle.SMOKE_NORMAL, location, 4, 0.05, 0.05, 0.05, 0.01);
-		/*world.spawnParticle(Particle.FLAME, location, 10, 0.15, 0.15, 0.15, 0.01);
-		world.spawnParticle(Particle.SMOKE_LARGE, location, 1, 0.2, 0.2, 0.2, 0.1);
-		world.spawnParticle(Particle.SMOKE_NORMAL, location, 10, 0.0, 0.0, 0.0, 0.01);
-		world.spawnParticle(Particle.FLAME, location, 1, 0.1, 0.1, 0.1, 0.1);*/
+		if (useAnimation) {
+			flameAnimation.showNextFrame(location, vector);
+			smokeAnimation.showNextFrame(location, vector);
+			ParticleSprite.ORANGE_BALL.summon(location);
+		}
+		else {
+			world.spawnParticle(Particle.FLAME, location, 10, 0.15, 0.15, 0.15, 0.01);
+			world.spawnParticle(Particle.SMOKE_LARGE, location, 1, 0.2, 0.2, 0.2, 0.1);
+			world.spawnParticle(Particle.SMOKE_NORMAL, location, 10, 0.0, 0.0, 0.0, 0.01);
+			world.spawnParticle(Particle.FLAME, location, 1, 0.1, 0.1, 0.1, 0.1);
+		}
 		
 		// Flight effect on targets
 		for (LivingEntity target:getTargets(location, 1.5)) {
@@ -73,7 +76,7 @@ public class FireSpell extends BaseSpell implements SpellProjectile {
 		// Flight block effect
 		if (location.getBlock().getType().equals(Material.LONG_GRASS)) location.getBlock().setType(Material.FIRE);
 		if (location.getBlock().getType().equals(Material.DEAD_BUSH)) location.getBlock().setType(Material.FIRE);
-		if (location.getBlock().getType().equals(Material.AIR)) location.getBlock().setType(Material.FIRE);
+		if (location.getBlock().getType().equals(Material.DOUBLE_PLANT)) location.getBlock().setType(Material.FIRE);
 		if (location.getBlock().getType().equals(Material.FIRE)) {
 			final Location fireLoc = location.clone();
 			new BukkitRunnable() {
@@ -95,7 +98,7 @@ public class FireSpell extends BaseSpell implements SpellProjectile {
 		world.spawnParticle(Particle.LAVA, location, 50, 0.5, 0.5, 0.5, 0.05);
 		
 		// Impact effect on targets
-		for (LivingEntity target:getTargets(location, 2)) {
+		for (LivingEntity target:getTargets(location, radius)) {
 			target.setFireTicks(100);
 		}
 		
@@ -107,15 +110,14 @@ public class FireSpell extends BaseSpell implements SpellProjectile {
 		double z = location.getZ();
 		
 		// Impact block effect
-		Location[] locs = {new Location(world, x + 1, y, z), new Location(world, x - 1, y, z), new Location(world, x, y + 1, z), new Location(world, x, y - 1, z), new Location(world, x, y, z + 1), new Location(world, x, y, z - 1)};
+		Location[] locs = {new Location(world, x + 1, y, z), new Location(world, x - 1, y, z), new Location(world, x, y + 1, z), new Location(world, x, y - 1, z), new Location(world, x, y, z + 1), new Location(world, x, y, z - 1), location.clone()};
 		for (Location loc:locs) {
 			if (loc.getBlock().getType().equals(Material.AIR)) {
 				loc.getBlock().setType(Material.FIRE);
 				// Check if block below it is burnable;
 				// If not then remove fire after small time;
 				new BukkitRunnable() {
-					@Override
-					public void run() {
+					@Override public void run() {
 						loc.getBlock().setType(Material.AIR);
 					}
 				}.runTaskLater(plugin, (long) Math.ceil(Math.random() * 20) + 40);

@@ -20,18 +20,16 @@ public class EnergySpell extends BaseSpell implements SpellStrike {
 	public double radius;
 	public double damage;
 
-	public EnergySpell(Main plugin, Player player) {
-		onCast(plugin, player);
+	public EnergySpell(Main plugin, Player player, int cost) {
 		world = player.getWorld();
 		radius = 1.5;
 		damage = 30;
-		cost = 1;
+		onCast(plugin, player, cost);
 		initialiseProjectile();
 	}
 
-	public static void handEffect(Location location) {
-		// TODO Auto-generated method stub
-		
+	public static void handEffect(Player player, Location location) {
+		player.spawnParticle(Particle.FIREWORKS_SPARK, location, 1, 0.1, 0.1, 0.1, 0.00);
 	}
 	
 	@Override
@@ -39,14 +37,13 @@ public class EnergySpell extends BaseSpell implements SpellStrike {
 		
 		// Cast particles
 		world.spawnParticle(Particle.FIREWORKS_SPARK, location, 25, 0.0, 0.0, 0.0, 0.05);
-		world.spawnParticle(Particle.ENCHANTMENT_TABLE, location, 100, 1, 1, 1, 0.1);
 	}
 
 	@Override
 	public void onFlightEffect(World world, Location location, Vector vector) {
 		
 		// Flight particles
-		world.spawnParticle(Particle.FIREWORKS_SPARK, location, 5, 0.0, 0.0, 0.0, 0.05);
+		world.spawnParticle(Particle.FIREWORKS_SPARK, location, 1, 0.0, 0.0, 0.0, 0.05);
 	}
 
 	@Override

@@ -5,9 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.bukkit.GameMode;
-import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
@@ -41,59 +39,57 @@ public class Caster implements Tracer {
 	
 		// -- Body Code -- //
 	private float bodyYaw;
-	public boolean walking;
-	//private Location oldLocation;
-	
-	public void resetRotation() {
-		World world = player.getWorld();
-		double x = player.getLocation().getX();
-		double y = player.getLocation().getY();
-		double z = player.getLocation().getZ();
-		bodyYaw = 0;
-		float pitch = player.getLocation().getPitch();
-		player.teleport(new Location(world, x, y, z, 0, pitch));
-	}
-	
-	public void walkSideways(String direction) {
-		if (direction == "RIGHT") {
-			
-		}
-		if (direction == "LEFT") {
-			
-		}
-	}
+	public Vector bodyVector;
+	private boolean walkRight;
+	private boolean walkLeft;
 	
 	public void updatePlayerRotation(PlayerMoveEvent e) {
 		
-		if (e.getTo().getX() != e.getFrom().getX() || e.getTo().getZ() != e.getFrom().getZ()) {
+		walkRight = false;
+		walkLeft = false;
+		
+		if (e.getFrom().getX() != e.getTo().getX() | e.getFrom().getZ() != e.getTo().getZ()) {
 			// Compare walking direction and player eye direction to see if the player is walking straight
 			double x = e.getTo().getX() - e.getFrom().getX();
 			double z = e.getTo().getZ() - e.getFrom().getZ();
 			
-			Vector walkDirection = new Vector(x, 0, z);
-			Vector playerDirection = player.getLocation().getDirection();
+			Vector walkDirection = new Vector(x, 0, z).normalize();
+			Vector playerDirection = player.getLocation().getDirection().normalize();
 			playerDirection.setY(0);
 			
-			double length = walkDirection.crossProduct(playerDirection).length();
-			trace(length);
-			if (length > 0.1) {
-				//trace("sideways");
+			// Compare the two angles of the vectors
+			double angle1 = Math.atan2(playerDirection.getX(), playerDirection.getZ()) * (-180 / Math.PI);
+			double angle2 = Math.atan2(walkDirection.getX(), walkDirection.getZ()) * (-180 / Math.PI);
+			if ((angle2 - angle1) > 180) angle1 += 360;
+			if ((angle2 - angle1) < -180) angle1 -= 360;
+			
+			// If the walk direction is not the same as the direction the player is looking, change the body accordingly
+			if (((angle2 - angle1) > 20 && (angle2 - angle1) < 160)	|| ((angle2 - angle1) < -20 && (angle2 - angle1) > -160)) {
+				double difference = angle2 - angle1;
+				if (130 > difference && difference > 0) walkLeft = true;
+				else if (difference > 130) walkRight = true;
+				else if (-130 < difference && difference < 0) walkRight = true;
+				else if (difference < -130) walkLeft = true;
 			}
-			else {
-				//trace("straight");
-				bodyYaw = e.getTo().getYaw();
-			}
+			// Slowly reset the body back to the center
+			else new BukkitRunnable() {
+				@Override public void run() {
+					bodyYaw = e.getTo().getYaw();
+					while (bodyYaw < 180) bodyYaw += 360;
+					while (bodyYaw > 180) bodyYaw -= 360;
+				}
+			}.runTaskLater(plugin, 2);
 		}
 		
-		if (e.getTo().getYaw() != e.getFrom().getYaw()) {
-			// Compare the player eye direction to the body rotation and update the body rotation if necessary
-			float faceYaw = player.getLocation().getYaw();
-			float difference = faceYaw - bodyYaw;
-			if (difference > 50) bodyYaw = faceYaw - 50;
-			if (difference < -50) bodyYaw = faceYaw + 50;
-			trace("faceYaw: " + faceYaw);
-			trace("bodyYaw: " + bodyYaw);
-		}
+		// Compare the player eye direction to the body rotation and update the body rotation if necessary
+		float faceYaw = e.getTo().getYaw();
+		while (faceYaw < 180) faceYaw += 360;
+		while (faceYaw > 180) faceYaw -= 360;
+		float difference = faceYaw - bodyYaw;
+		if (difference < -250) difference +=360;
+		if (difference > 250) difference -=360;
+		if (difference > 50) bodyYaw = faceYaw - 50;
+		if (difference < -50) bodyYaw = faceYaw + 50;
 	}
 	
 	
@@ -120,6 +116,22 @@ public class Caster implements Tracer {
 				}
 				mainItem = player.getInventory().getItemInMainHand();
 				offItem = player.getInventory().getItemInOffHand();
+				
+				double radianBody = (bodyYaw + 90) * (Math.PI / 180);
+				bodyVector = new Vector(Math.cos(radianBody), 0, Math.sin(radianBody)).normalize();
+				if (walkRight) {
+					Vector addVector = player.getEyeLocation().getDirection().crossProduct(new Vector(0, 1, 0)).normalize().multiply(-0.25);
+					bodyVector.add(addVector).normalize();
+				}
+				else if (walkLeft) {
+					Vector addVector = player.getEyeLocation().getDirection().crossProduct(new Vector(0, 1, 0)).normalize().multiply(0.25);
+					bodyVector.add(addVector).normalize();
+				}
+				
+				if (isSpell(mainItem)) activeSpell = Spellbook.fromBookName(mainItem.getItemMeta().getDisplayName());
+				else if (isSpell(offItem)) activeSpell = Spellbook.fromBookName(offItem.getItemMeta().getDisplayName());
+				else activeSpell = null;
+				
 			}
 		}.runTaskTimer(plugin, 0, 1);
 		
@@ -127,7 +139,7 @@ public class Caster implements Tracer {
 			@Override public void run() {
 				if ((mainItem.getType().equals(Material.AIR)|offItem.getType().equals(Material.AIR))&&activeSpell != null) activeSpell.handEffect(plugin.getCaster(player));
 			}
-		}.runTaskTimer(plugin, 0, 11);
+		}.runTaskTimer(plugin, 0, 6);
 	}
 	
 	private boolean exists() {
@@ -150,21 +162,6 @@ public class Caster implements Tracer {
 			player.sendMessage("New Ability: " + activeAbility.itemName);
 			return true;
 		}
-		
-		// If player has staff in main hand, switch to next spell;
-		/*if (mainItem.getType().equals(Material.AIR) && passiveSpells.size() > 0) {
-			int index = passiveSpells.indexOf(activeSpell);
-			if (passiveSpells.size() > index + 1) activeSpell = passiveSpells.get(index + 1);
-			else activeSpell = passiveSpells.get(0);
-			player.sendMessage("New Spell: " + activeSpell.itemName);
-			return true;
-		}*/
-		
-		// If player has a staff in offhand, cast spell;
-		if (mainItem.getType().equals(Material.AIR) && canCastSpell()) {
-			activeSpell.cast(plugin, player);
-			return true;
-		}
 
 		return false;
 	}
@@ -179,22 +176,18 @@ public class Caster implements Tracer {
 			return true;
 		}
 		
-		if (isSpell(mainItem)) {
-			activeSpell = Spellbook.fromBookName(mainItem.getItemMeta().getDisplayName());
-			player.sendMessage("New Spell: " + activeSpell.itemName);
+		if (isSpell(mainItem) && isSpell(offItem)) return false;
+		if (isSpell(mainItem) && !offItem.getType().equals(Material.AIR)) return false;
+		if (isSpell(offItem) && !mainItem.getType().equals(Material.AIR)) return false;
+		
+		// If player has a staff in offhand, cast spell;
+		if (isSpell(mainItem) && canCastSpell()) {
+			activeSpell.cast(plugin, player);
 			return true;
 		}
 		
-		// If player has a staff in main hand, switch to next spell;
-		/*if (offItem == null && player.getMainHand().equals(MainHand.LEFT) && passiveSpells.size() > 0) {
-			int index = passiveSpells.indexOf(activeSpell);
-			if (passiveSpells.size() > index + 1) activeSpell = passiveSpells.get(index + 1);
-			else activeSpell = passiveSpells.get(0);
-			return true;
-		}*/
-		
 		// If player has a staff in offhand, cast spell;
-		if (offItem.getType().equals(Material.AIR) && canCastSpell()) {
+		if (isSpell(offItem) && canCastSpell()) {
 			activeSpell.cast(plugin, player);
 			return true;
 		}
@@ -219,9 +212,8 @@ public class Caster implements Tracer {
 	
 	// Check if the player can execute anything by dual clicking;
 	public boolean handleDualClickEvent() {
-		if (activeSpell != null) {
-			activeSpell = null;
-			return true;
+		if ( (isSpell(mainItem)|isSpell(offItem)) && canCastSpell() ) {
+			activeSpell.dualCast(plugin, player);
 		}
 		return false;
 	}

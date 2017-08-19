@@ -9,6 +9,6 @@ public interface Tracer {
 	}
 	
 	public default void traceChat(Object input) {
-		Bukkit.broadcastMessage((String) input);
+		Bukkit.broadcastMessage(" test1" + (String) input);
 	}
 }

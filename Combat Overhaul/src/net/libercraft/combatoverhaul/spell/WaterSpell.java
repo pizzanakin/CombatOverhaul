@@ -15,8 +15,10 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 
 import net.libercraft.combatoverhaul.Main;
-import net.libercraft.combatoverhaul.particleanimator.ParticleAnimator;
-import net.libercraft.combatoverhaul.particleanimator.ParticleAnimator.Animation;
+import net.libercraft.combatoverhaul.particleanimator.ParticleSprite;
+import net.libercraft.combatoverhaul.particleanimator.ParticleAnimation;
+import net.libercraft.combatoverhaul.particleanimator.ParticleAnimation.Animation;
+import net.libercraft.combatoverhaul.particleanimator.ParticleAnimation.Shape;
 import net.libercraft.combatoverhaul.player.Caster;
 
 public class WaterSpell extends BaseSpell implements SpellProjectile {
@@ -24,21 +26,21 @@ public class WaterSpell extends BaseSpell implements SpellProjectile {
 	public double speed;
 	public double radius;
 	public double damage;
-	public int frame;
+	private ParticleAnimation cyanAnimation = new ParticleAnimation(ParticleSprite.SINGLE_BLUE, Animation.TWIST, Shape.CROSS_FOUR, 0.2, 0.0, 0.3);
+	private ParticleAnimation wakeAnimation = new ParticleAnimation(ParticleSprite.SINGLE_WAKE, Animation.TWIST, Shape.CROSS_FOUR, 0.4, 0, 1);
 	
-	public WaterSpell(Main plugin, Player player) {
-		onCast(plugin, player);
-		speed = 0.1;
-		radius = 1.5;
+	public WaterSpell(Main plugin, Player player, int cost) {
+		speed = 0.6;
+		radius = 2.5;
 		damage = 10;
-		cost = 1;
-		frame = 0;
+		onCast(plugin, player, cost);
 		initialiseProjectile();
 	}
 
-	public static void handEffect(Caster caster, Location location) {
-		caster.getPlayer().spawnParticle(Particle.REDSTONE, location, 0, 0.01, 1, 1, 1);
-		caster.getPlayer().spawnParticle(Particle.REDSTONE, location, 0, 0.01, 1, 1, 1);
+	public static void handEffect(Player player, Location location) {
+		player.spawnParticle(Particle.WATER_WAKE, location, 4, 0.1, 0.1, 0.1, 0.00);
+		//player.spawnParticle(Particle.REDSTONE, location, 0, 0.01, 1, 1, 1);
+		//player.spawnParticle(Particle.REDSTONE, location, 0, 0.01, 1, 1, 1);
 	}
 	
 	@Override
@@ -54,12 +56,10 @@ public class WaterSpell extends BaseSpell implements SpellProjectile {
 	@Override
 	public void onFlightEffect(World world, Location location, Vector vector) {
 		
-		frame = ParticleAnimator.animate(Particle.WATER_WAKE, location.clone(), Animation.SINUS, 1, 0.0, 0.0, 0.0, 0.0, frame, vector, "EIGHT");
-		
 		// Flight particles
-		caster.getPlayer().spawnParticle(Particle.REDSTONE, location, 0, 0.01, 1, 1, 1);
-		//world.spawnParticle(Particle.REDSTONE, location, 0, 0.01, 2.55, 2.55, 1);
-		//world.spawnParticle(Particle.WATER_WAKE, location, 40, 0.1, 0.1, 0.1, 0.00);
+		cyanAnimation.showNextFrame(location, vector);
+		wakeAnimation.showNextFrame(location, vector);
+		ParticleSprite.CYAN_BALL.summon(location);
 		
 		// Flight effect on targets
 		for (LivingEntity target:getTargets(location, 1.5)) {
@@ -83,7 +83,7 @@ public class WaterSpell extends BaseSpell implements SpellProjectile {
 		
 		
 		// Impact effect on targets
-		for (LivingEntity target:getTargets(location, 1.5)) {
+		for (LivingEntity target:getTargets(location, radius)) {
 			target.setFireTicks(0);
 			target.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 100, 1));
 		}

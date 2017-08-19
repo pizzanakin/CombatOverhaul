@@ -24,18 +24,17 @@ public class IceSpell extends BaseSpell implements SpellProjectile {
 	public double radius;
 	public double damage;
 
-	public IceSpell(Main plugin, Player player) {
-		onCast(plugin, player);
-		speed = 0.7;
+	public IceSpell(Main plugin, Player player, int cost) {
+		speed = 0.4;
 		radius = 2.5;
 		damage = 25;
 		cost = 1;
+		onCast(plugin, player, cost);
 		initialiseProjectile();
 	}
 
-	public static void handEffect(Location location) {
-		// TODO Auto-generated method stub
-		
+	public static void handEffect(Player player, Location location) {
+		player.spawnParticle(Particle.CLOUD, location, 1, 0.0, 0.0, 0.0, 0.0);
 	}
 	
 	@Override
@@ -82,7 +81,7 @@ public class IceSpell extends BaseSpell implements SpellProjectile {
 		world.spawnParticle(Particle.FIREWORKS_SPARK, location, 100, 0.0, 0.0, 0.0, 0.2);
 		
 		// Impact effect on targets
-		for (LivingEntity target:getTargets(location, 1.5)) {
+		for (LivingEntity target:getTargets(location, radius)) {
 			target.setFireTicks(0);
 			target.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 200, 1));
 		}

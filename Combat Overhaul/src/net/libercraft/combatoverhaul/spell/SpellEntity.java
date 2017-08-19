@@ -75,9 +75,9 @@ public abstract interface SpellEntity extends Tracer {
 		double y = location.getY();
 		double z = location.getZ();
 		
-		x = x + (vector.getX() / 25);
-		y = y + (vector.getY() / 25);
-		z = z + (vector.getZ() / 25);
+		x = x + (vector.getX() / 32);
+		y = y + (vector.getY() / 32);
+		z = z + (vector.getZ() / 32);
 		
 		location.setX(x);
 		location.setY(y);

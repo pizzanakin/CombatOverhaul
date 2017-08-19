@@ -28,7 +28,7 @@ public class ListenClass implements Listener, Tracer {
 	public void onPlayerMoveEvent(PlayerMoveEvent e) {
 		Caster caster = plugin.getCaster(e.getPlayer());
 		if (caster.equals(null)) return;
-		//caster.updatePlayerRotation(e);
+		caster.updatePlayerRotation(e);
 	}
 	
 	// Prevents entities from taking damage from spell effects that are not part of flight or impact damage;
