@@ -6,7 +6,7 @@ import org.bukkit.entity.TippedArrow;
 import org.bukkit.metadata.FixedMetadataValue;
 
 import net.libercraft.combatoverhaul.Main;
-import net.libercraft.combatoverhaul.player.Caster;
+import net.libercraft.combatoverhaul.managers.Caster;
 
 public interface ArrowAbility {
 	

@@ -13,13 +13,13 @@ import org.bukkit.util.Vector;
 
 import net.libercraft.combatoverhaul.Main;
 import net.libercraft.combatoverhaul.Tracer;
-import net.libercraft.combatoverhaul.player.Caster;
+import net.libercraft.combatoverhaul.managers.Caster;
 
 public abstract interface SpellEntity extends Tracer {
 
 	// Functions for spell behaviour;
 	public abstract void onFlightEffect(World world, Location location, Vector vector);
-	public abstract void onImpactEffect(World world, Location location);
+	public abstract void onImpactEffect(World world, Location location, Vector vector);
 	public abstract void castBehaviour(Main plugin, Location location, Vector vector);
 
 	// Functions for setting materials to fade and pass through;
@@ -31,6 +31,7 @@ public abstract interface SpellEntity extends Tracer {
 	public abstract Caster retrieveCaster();
 	public abstract double retrieveRadius();
 	public abstract double retrieveDamage();
+	public abstract boolean retrieveFlaming();
 	
 	public default void initialiseProjectile() {
 		Main plugin = retrievePlugin();
@@ -51,12 +52,30 @@ public abstract interface SpellEntity extends Tracer {
 		World world = caster.getPlayer().getWorld();
 		Location location = new Location(world, x, y, z);
 		
+		// Change the vector to make it appear as if it came from the hand;
+		Location end = location.clone();
+		boolean foundEnd = false;
+		while (!foundEnd) {
+			end.add(vector);
+			if (!setPassMaterial().contains(end.getBlock().getType())) {
+				foundEnd = true;
+			}
+			if (end.getY() >= 256 || end.getY() <= 0) {
+				foundEnd = true;
+			}
+			if (end.distance(location) >= 320) {
+				foundEnd = true;
+			}
+		}
+		vector = end.subtract(caster.getThirdPersonHandLocation()).toVector().normalize();
+		location = caster.getThirdPersonHandLocation();
+		
 		castBehaviour(plugin, location, vector);
 	}
 	
 	public default boolean checkCollision(Location location, Vector vector) {
 		
-		move(location, vector);
+		move(location, vector, 32);
 		
 		// Check for out of bounds
 		if (location.getY() > 256 || location.getY() < 0) return true;
@@ -70,14 +89,14 @@ public abstract interface SpellEntity extends Tracer {
 		return true;
 	}
 	
-	public default void move(Location location, Vector vector) {
+	public default void move(Location location, Vector vector, int factor) {
 		double x = location.getX();
 		double y = location.getY();
 		double z = location.getZ();
 		
-		x = x + (vector.getX() / 32);
-		y = y + (vector.getY() / 32);
-		z = z + (vector.getZ() / 32);
+		x = x + (vector.getX() / factor);
+		y = y + (vector.getY() / factor);
+		z = z + (vector.getZ() / factor);
 		
 		location.setX(x);
 		location.setY(y);
@@ -91,7 +110,7 @@ public abstract interface SpellEntity extends Tracer {
 		double damage = retrieveDamage();
 		
 		Location fadeLocation = location.clone();
-		move(fadeLocation, vector);
+		move(fadeLocation, vector, 32);
 		
 		// Check for fade materials to cancel the impact effect;
 		for (Material mat:setFadeMaterial()) {
@@ -107,7 +126,7 @@ public abstract interface SpellEntity extends Tracer {
 		}
 		
 		// Call the function to execute the impact effect from the final spell class;'
-		onImpactEffect(location.getWorld(), location);
+		onImpactEffect(location.getWorld(), location, vector);
 		
 		// Remove the safety tag from all targets;
 		for (LivingEntity target:getTargets(location, radius)) {

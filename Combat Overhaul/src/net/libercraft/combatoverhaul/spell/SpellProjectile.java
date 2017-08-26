@@ -7,22 +7,23 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 import net.libercraft.combatoverhaul.Main;
+import net.libercraft.combatoverhaul.managers.Caster;
 
 public interface SpellProjectile extends SpellEntity {
 
 	public abstract double retrieveSpeed();
 	
 	@Override
-	public default void move(Location location, Vector vector) {
+	public default void move(Location location, Vector vector, int factor) {
 		double speed = retrieveSpeed();
 		
 		double x = location.getX();
 		double y = location.getY();
 		double z = location.getZ();
 		
-		x = x + (vector.getX() * speed / 32);
-		y = y + (vector.getY() * speed / 32);
-		z = z + (vector.getZ() * speed / 32);
+		x = x + (vector.getX() * speed / factor);
+		y = y + (vector.getY() * speed / factor);
+		z = z + (vector.getZ() * speed / factor);
 		
 		location.setX(x);
 		location.setY(y);
@@ -35,12 +36,27 @@ public interface SpellProjectile extends SpellEntity {
 			@Override public void run() {
 				for (int i = 0; i < 32; i++) {
 					if (!checkCollision(location.clone(), vector)) {
-						move(location, vector);
+						move(location, vector, 32);
 					}
 					else {
 						onCollision(location, vector);
 						this.cancel();
 						return;
+					}
+					
+					Caster caster = retrieveCaster();
+					double damage = retrieveDamage();
+					
+					for (LivingEntity target:getTargets(location, 1)) {
+						if (target.hasMetadata("cooldown")) continue;
+						if (retrieveFlaming()) target.setFireTicks(1);
+						target.damage(damage, caster.getPlayer());
+						target.setMetadata("cooldown", new FixedMetadataValue(plugin, "cooldown"));
+						new BukkitRunnable() {
+							@Override public void run() {
+								if (target.hasMetadata("cooldown")) target.removeMetadata("cooldown", plugin);
+							}
+						}.runTaskLater(plugin, 3);
 					}
 					
 					if (i==0|i==16) {

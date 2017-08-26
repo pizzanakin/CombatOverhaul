@@ -9,11 +9,11 @@ import org.bukkit.util.Vector;
 
 import net.libercraft.combatoverhaul.Main;
 
-public class Volley extends BaseAbility implements ArrowAbility {
+public class VolleyAbility extends BaseAbility implements ArrowAbility {
 
-	public Volley(Main plugin, Player player) {
+	public VolleyAbility(Main plugin, Player player) {
 		onCast(plugin, player);
-		caster.hasActivedVolley = true;
+		caster.hasActivatedVolley = true;
 	}
 	
 	public void activate(Vector vector) {
@@ -40,7 +40,7 @@ public class Volley extends BaseAbility implements ArrowAbility {
 		}
 		
 		caster.getPlayer().setCooldown(Material.BOW, 25);
-		caster.hasActivedVolley = false;
+		caster.hasActivatedVolley = false;
 		if (caster.getPlayer().getGameMode().equals(GameMode.CREATIVE)) return;
 		caster.removeArrow();
 		caster.decreaseBowDurability();

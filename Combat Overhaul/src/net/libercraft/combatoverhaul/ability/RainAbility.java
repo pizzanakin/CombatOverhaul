@@ -9,9 +9,9 @@ import org.bukkit.util.Vector;
 
 import net.libercraft.combatoverhaul.Main;
 
-public class ArrowRain extends BaseAbility implements ArrowAbility {
+public class RainAbility extends BaseAbility implements ArrowAbility {
 
-	public ArrowRain(Main plugin, Player player) {
+	public RainAbility(Main plugin, Player player) {
 		onCast(plugin, player);
 		
 		// Retrieve the location and direction of the player

@@ -14,7 +14,7 @@ public interface SpellBouncer extends SpellEntity {
 	@Override // Returns true if it projectile has to get killed;
 	public default boolean checkCollision(Location location, Vector vector) {
 
-		move(location, vector);
+		move(location, vector, 32);
 		
 		// Check for out of bounds
 		if (location.getY() > 256 || location.getY() < 0) return true;

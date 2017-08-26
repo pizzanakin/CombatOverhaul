@@ -1,27 +1,92 @@
-package net.libercraft.combatoverhaul.player;
+package net.libercraft.combatoverhaul.managers;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import net.libercraft.combatoverhaul.Main;
 import net.libercraft.combatoverhaul.Tracer;
+import net.libercraft.combatoverhaul.ability.AbilityScroll;
 
-public class InputReader implements Listener, Tracer {
+public class CasterManager implements Listener, Tracer {
 	
-	Main plugin;
+	private Main plugin;
+	private List<Caster> casters;
 	
-	public InputReader(Main _plugin) {
+	public CasterManager(Main _plugin) {
 		plugin = _plugin;
+		casters = new ArrayList<Caster>();
 	}
 	
+	// -- LIST METHODS -- //
+	// Get the array of casters;
+	public List<Caster> casters() {
+		return casters;
+	}
+	
+	// Return the caster instance of the player;
+	public Caster get(Player player) {
+		for (Caster caster:casters) {
+			if (caster.getPlayer() != player) continue;
+			return caster;
+		}
+		return null;
+	}
+	
+	// -- EVENT LISTENERS -- //
+	
+	// Add a caster instance of the player;
+	@EventHandler
+	private void addCaster(PlayerJoinEvent e) {
+		if (get(e.getPlayer()) != null) return;
+		
+		casters.add(new Caster(e.getPlayer(), plugin));
+	}
+	
+	// Remove the caster instance of the player;
+	@EventHandler
+	private void removeCaster(PlayerQuitEvent e) {
+		for (int i = 0; i < casters.size(); i++) {
+			if (casters.get(i).getPlayer() != e.getPlayer()) continue;
+			casters.remove(i);
+		}
+	}
+	
+	// Check for collision, otherwise update the player rotation data;
+	@EventHandler
+	public void onPlayerMoveEvent(PlayerMoveEvent e) {
+		
+		if (e.isCancelled()) return;
+		
+		for (Altar altar:plugin.getAltarManager().altars()) {
+			altar.checkPillarCollision(e);
+		}
+		if (e.isCancelled()) return;
+		
+		if (get(e.getPlayer()) == null) casters.add(new Caster(e.getPlayer(), plugin));
+		Caster caster = get(e.getPlayer());
+		
+		caster.updatePlayerRotation(e);
+	}
+	
+	// Register a click and execute the correct actions;
 	@EventHandler
 	public void onClickEvent(PlayerInteractEvent e) {
 		
-		final Caster caster = plugin.getCaster(e.getPlayer());
+		// Prevent player from turning an ability into a map;
+		if (AbilityScroll.isAbility(e.getItem())) e.setCancelled(true);
+		
+		final Caster caster = get(e.getPlayer());
 		if (caster == null) return;
 		
 		// -- Register Action --
@@ -37,7 +102,6 @@ public class InputReader implements Listener, Tracer {
 		if (e.getPlayer().hasMetadata("JRC") && e.getPlayer().hasMetadata("JLC")) {
 			e.getPlayer().removeMetadata("JRC", plugin);
 			e.getPlayer().removeMetadata("JLC", plugin);
-			trace("test");
 			
 			if (caster.handleDualClickEvent()) {
 				e.setCancelled(true);

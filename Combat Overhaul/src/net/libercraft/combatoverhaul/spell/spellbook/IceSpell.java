@@ -1,4 +1,4 @@
-package net.libercraft.combatoverhaul.spell;
+package net.libercraft.combatoverhaul.spell.spellbook;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,13 +16,20 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 import net.libercraft.combatoverhaul.Main;
-import net.libercraft.combatoverhaul.player.Caster;
+import net.libercraft.combatoverhaul.managers.Caster;
+import net.libercraft.combatoverhaul.particleanimator.ParticleAnimation;
+import net.libercraft.combatoverhaul.particleanimator.ParticleSprite;
+import net.libercraft.combatoverhaul.particleanimator.ParticleAnimation.Animation;
+import net.libercraft.combatoverhaul.particleanimator.ParticleAnimation.Shape;
+import net.libercraft.combatoverhaul.spell.BaseSpell;
+import net.libercraft.combatoverhaul.spell.SpellProjectile;
 
 public class IceSpell extends BaseSpell implements SpellProjectile {
 
 	public double speed;
 	public double radius;
 	public double damage;
+	private ParticleAnimation flightLightBlueAnimation;
 
 	public IceSpell(Main plugin, Player player, int cost) {
 		speed = 0.4;
@@ -31,6 +38,7 @@ public class IceSpell extends BaseSpell implements SpellProjectile {
 		cost = 1;
 		onCast(plugin, player, cost);
 		initialiseProjectile();
+		flightLightBlueAnimation = new ParticleAnimation(plugin, ParticleSprite.SINGLE_LIGHTBLUE, Animation.TWIST, Shape.CROSS_FOUR, 0.35, 0, 1, false);
 	}
 
 	public static void handEffect(Player player, Location location) {
@@ -52,8 +60,10 @@ public class IceSpell extends BaseSpell implements SpellProjectile {
 	public void onFlightEffect(World world, Location location, Vector vector) {
 		
 		// Flight particles
-		world.spawnParticle(Particle.CLOUD, location, 5, 0.0, 0.0, 0.0, 0.05);
-		world.spawnParticle(Particle.FIREWORKS_SPARK, location, 5, 0.0, 0.0, 0.0, 0.05);
+		//world.spawnParticle(Particle.CLOUD, location, 5, 0.0, 0.0, 0.0, 0.05);
+		//world.spawnParticle(Particle.FIREWORKS_SPARK, location, 5, 0.0, 0.0, 0.0, 0.05);
+		flightLightBlueAnimation.showNextFrame(location, vector);
+		ParticleSprite.CLOUD_BALL.summon(location);
 		
 		// Flight effect on targets
 		for (LivingEntity target:getTargets(location, 1.5)) {
@@ -70,11 +80,11 @@ public class IceSpell extends BaseSpell implements SpellProjectile {
 		}
 		
 		// Flight sound effect
-		world.playSound(location, Sound.BLOCK_GLASS_BREAK, 1, 1);
+		world.playSound(location, Sound.BLOCK_GLASS_BREAK, 2, 1);
 	}
 
 	@Override
-	public void onImpactEffect(World world, Location location) {
+	public void onImpactEffect(World world, Location location, Vector vector) {
 		
 		// Impact particles
 		world.spawnParticle(Particle.CLOUD, location, 25, 0.0, 0.0, 0.0, 0.2);
@@ -87,7 +97,7 @@ public class IceSpell extends BaseSpell implements SpellProjectile {
 		}
 
 		// Impact sound effect
-		world.playSound(location, Sound.BLOCK_GLASS_BREAK, 2, -2);
+		world.playSound(location, Sound.BLOCK_GLASS_BREAK, 3, -2);
 		
 		// Impact block effect
 		for (int i=-1; i<2; i++) {
@@ -153,4 +163,5 @@ public class IceSpell extends BaseSpell implements SpellProjectile {
 	@Override public double retrieveSpeed() {return speed;}
 	@Override public double retrieveRadius() {return radius;}
 	@Override public double retrieveDamage() {return damage;}
+	@Override public boolean retrieveFlaming() {return false;}
 }

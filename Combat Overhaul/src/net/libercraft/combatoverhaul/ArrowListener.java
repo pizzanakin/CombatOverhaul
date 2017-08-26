@@ -1,4 +1,4 @@
-package net.libercraft.combatoverhaul.player;
+package net.libercraft.combatoverhaul;
 
 import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
@@ -9,26 +9,17 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
-import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import net.libercraft.combatoverhaul.Main;
-import net.libercraft.combatoverhaul.Tracer;
+import net.libercraft.combatoverhaul.managers.Caster;
 
-public class ListenClass implements Listener, Tracer {
+public class ArrowListener implements Listener, Tracer {
 
 	Main plugin;
 	
-	public ListenClass(Main _plugin) {
+	public ArrowListener(Main _plugin) {
 		plugin = _plugin;
-	}
-	
-	@EventHandler
-	public void onPlayerMoveEvent(PlayerMoveEvent e) {
-		Caster caster = plugin.getCaster(e.getPlayer());
-		if (caster.equals(null)) return;
-		caster.updatePlayerRotation(e);
 	}
 	
 	// Prevents entities from taking damage from spell effects that are not part of flight or impact damage;
@@ -41,18 +32,27 @@ public class ListenClass implements Listener, Tracer {
 	
 	// Change a regular arrow into a volley ability;
 	@EventHandler
-	public void onVolleyShot(EntityShootBowEvent e) {
+	public void onAbilityShot(EntityShootBowEvent e) {
 		
 		// Make sure the shooter is a player;
 		if (!(e.getEntity() instanceof Player)) return;
-		Caster caster = plugin.getCaster((Player) e.getEntity());
+		Caster caster = plugin.getCasterManager().get((Player) e.getEntity());
 		
 		// Check if the player has activated a volley;
-		if (!caster.hasActivedVolley) return;
+		if (caster.hasActivatedVolley) {
+			
+			// Activate the volley instance;
+			caster.volley.activate(e.getProjectile().getVelocity());
+			e.setCancelled(true);
+		}
 		
-		// Activate the volley instance;
-		caster.volley.activate(e.getProjectile().getVelocity());
-		e.setCancelled(true);
+		if (caster.hasActivatedHoming) {
+			
+			// Activate the homing instance;
+			caster.homing.activate(e.getProjectile().getVelocity());
+			e.setCancelled(true);
+		}
+		
 	}
 	
 	// Make arrows shot by an ability unable to get picked up;

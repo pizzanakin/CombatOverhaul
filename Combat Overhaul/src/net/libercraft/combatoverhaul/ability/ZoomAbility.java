@@ -8,9 +8,9 @@ import org.bukkit.potion.PotionEffectType;
 
 import net.libercraft.combatoverhaul.Main;
 
-public class Zoom extends BaseAbility {
+public class ZoomAbility extends BaseAbility {
 
-	public Zoom(Main plugin, Player player) {
+	public ZoomAbility(Main plugin, Player player) {
 		onCast(plugin, player);
 		
 		PotionEffect zoom = new PotionEffect(PotionEffectType.SLOW, 999999, 100);

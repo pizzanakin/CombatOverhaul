@@ -1,4 +1,4 @@
-package net.libercraft.combatoverhaul.spell;
+package net.libercraft.combatoverhaul.spell.spellbook;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,7 +13,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
 import net.libercraft.combatoverhaul.Main;
-import net.libercraft.combatoverhaul.player.Caster;
+import net.libercraft.combatoverhaul.managers.Caster;
+import net.libercraft.combatoverhaul.spell.BaseSpell;
+import net.libercraft.combatoverhaul.spell.SpellProjectile;
 
 public class LavaSpell extends BaseSpell implements SpellProjectile {
 
@@ -68,7 +70,7 @@ public class LavaSpell extends BaseSpell implements SpellProjectile {
 	}
 	
 	@Override
-	public void onImpactEffect(World world, Location location) {
+	public void onImpactEffect(World world, Location location, Vector vector) {
 		
 		// Impact particles
 		world.spawnParticle(Particle.LAVA, location, 50, 0.1, 0.1, 0.1, 0.1);
@@ -115,4 +117,5 @@ public class LavaSpell extends BaseSpell implements SpellProjectile {
 	@Override public double retrieveSpeed() {return speed;}
 	@Override public double retrieveRadius() {return radius;}
 	@Override public double retrieveDamage() {return damage;}
+	@Override public boolean retrieveFlaming() {return true;}
 }

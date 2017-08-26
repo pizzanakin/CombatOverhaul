@@ -1,10 +1,12 @@
-package net.libercraft.combatoverhaul.player;
+package net.libercraft.combatoverhaul.managers;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Player;
@@ -13,16 +15,17 @@ import org.bukkit.entity.SpectralArrow;
 import org.bukkit.entity.TippedArrow;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.MainHand;
 import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.potion.PotionData;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
-import net.libercraft.combatoverhaul.Glow;
 import net.libercraft.combatoverhaul.Main;
 import net.libercraft.combatoverhaul.Tracer;
-import net.libercraft.combatoverhaul.ability.Ability;
-import net.libercraft.combatoverhaul.ability.Volley;
+import net.libercraft.combatoverhaul.ability.AbilityScroll;
+import net.libercraft.combatoverhaul.ability.HomingAbility;
+import net.libercraft.combatoverhaul.ability.VolleyAbility;
 import net.libercraft.combatoverhaul.spell.Spellbook;
 
 public class Caster implements Tracer {
@@ -92,6 +95,63 @@ public class Caster implements Tracer {
 		if (difference < -50) bodyYaw = faceYaw + 50;
 	}
 	
+	public Location getThirdPersonHandLocation() {
+		String spellHand = null;
+		if (player.getInventory().getItemInOffHand().getType().equals(Material.AIR)) spellHand = "OFF";
+		if (player.getInventory().getItemInMainHand().getType().equals(Material.AIR)) spellHand = "MAIN";
+		if (spellHand == null) return null;
+		
+		String mainHand = null;
+		if (player.getMainHand().equals(MainHand.LEFT)) mainHand = "LEFT";
+		if (player.getMainHand().equals(MainHand.RIGHT)) mainHand = "RIGHT";
+		if (mainHand == null) return null;
+		
+		Location loc1 = player.getLocation();
+		Vector vec1 = bodyVector.clone();
+		Vector vec2 = vec1.clone().crossProduct(new Vector(0, 1, 0)).normalize().multiply(0.4);
+		vec2.normalize();
+		vec2.multiply(0.4);
+		
+		// Place the particle location at the correct hand
+		if (mainHand.equals("LEFT") && spellHand.equals("MAIN")) vec2.multiply(-1);
+		if (mainHand.equals("RIGHT") && spellHand.equals("OFF")) vec2.multiply(-1);
+		
+		vec2.add(vec1.normalize().multiply(0.1));
+		
+		loc1.setY(loc1.getY() + 0.75);
+		Location loc2 = loc1.add(vec2);
+		
+		return loc2;
+	}
+	
+	public Location getFirstPersonHandLocation() {
+		String spellHand = null;
+		if (player.getInventory().getItemInOffHand().getType().equals(Material.AIR)) spellHand = "OFF";
+		if (player.getInventory().getItemInMainHand().getType().equals(Material.AIR)) spellHand = "MAIN";
+		if (spellHand == null) return null;
+		
+		String mainHand = null;
+		if (player.getMainHand().equals(MainHand.LEFT)) mainHand = "LEFT";
+		if (player.getMainHand().equals(MainHand.RIGHT)) mainHand = "RIGHT";
+		if (mainHand == null) return null;
+		
+		Location loc1 = player.getEyeLocation();
+		Vector vec1 = player.getEyeLocation().getDirection();
+		Vector vec2 = vec1.clone().crossProduct(new Vector(0, 1, 0));
+		vec2.normalize();
+		vec2.multiply(0.4);
+		
+		// Place the particle location at the correct hand
+		if (mainHand.equals("LEFT") && spellHand.equals("MAIN")) vec2.multiply(-1);
+		if (mainHand.equals("RIGHT") && spellHand.equals("OFF")) vec2.multiply(-1);
+		
+		vec2.add(vec1.normalize().multiply(0.8));
+		
+		loc1.setY(loc1.getY() - 0.05);
+		Location loc2 = loc1.add(vec2);
+		
+		return loc2;
+	}
 	
 	
 	
@@ -99,7 +159,7 @@ public class Caster implements Tracer {
 	public Caster(Player player, Main plugin) {
 		this.player = player;
 		this.plugin = plugin;
-		passiveAbilities = new ArrayList<Ability>();
+		passiveAbilities = new ArrayList<AbilityScroll>();
 		passiveSpells = new ArrayList<Spellbook>();
 		
 		new BukkitRunnable() {
@@ -110,9 +170,13 @@ public class Caster implements Tracer {
 				for (int i = 0; i < 40; i++) {
 					ItemStack item = player.getInventory().getItem(i);
 					if (item == null) continue;
-					if (!item.getItemMeta().hasEnchant(new Glow(80))) continue;
-					if (item.getType().equals(Material.EMPTY_MAP)) passiveAbilities.add(Ability.fromMapName(item.getItemMeta().getDisplayName()));
-					if (item.getType().equals(Material.BOOK)) passiveSpells.add(Spellbook.fromBookName(item.getItemMeta().getDisplayName()));
+					if (!item.getItemMeta().hasLore()) continue;
+					
+					List<String> lore = item.getItemMeta().getLore();
+					if (!(lore.get(0).equals(ChatColor.GREEN + "Ability:")|lore.get(0).equals(ChatColor.AQUA + "Spell:"))) continue;
+					
+					if (item.getType().equals(Material.EMPTY_MAP)) passiveAbilities.add(AbilityScroll.fromItem(item));
+					if (item.getType().equals(Material.BOOK)) passiveSpells.add(Spellbook.fromItem(item));
 				}
 				mainItem = player.getInventory().getItemInMainHand();
 				offItem = player.getInventory().getItemInOffHand();
@@ -128,8 +192,8 @@ public class Caster implements Tracer {
 					bodyVector.add(addVector).normalize();
 				}
 				
-				if (isSpell(mainItem)) activeSpell = Spellbook.fromBookName(mainItem.getItemMeta().getDisplayName());
-				else if (isSpell(offItem)) activeSpell = Spellbook.fromBookName(offItem.getItemMeta().getDisplayName());
+				if (Spellbook.isSpell(mainItem)) activeSpell = Spellbook.fromItem(mainItem);
+				else if (Spellbook.isSpell(offItem)) activeSpell = Spellbook.fromItem(offItem);
 				else activeSpell = null;
 				
 			}
@@ -137,13 +201,13 @@ public class Caster implements Tracer {
 		
 		new BukkitRunnable() {
 			@Override public void run() {
-				if ((mainItem.getType().equals(Material.AIR)|offItem.getType().equals(Material.AIR))&&activeSpell != null) activeSpell.handEffect(plugin.getCaster(player));
+				if ((mainItem.getType().equals(Material.AIR)|offItem.getType().equals(Material.AIR))&&activeSpell != null) activeSpell.handEffect(plugin.getCasterManager().get(player));
 			}
 		}.runTaskTimer(plugin, 0, 6);
 	}
 	
 	private boolean exists() {
-		return plugin.getCasters().contains(this);
+		return plugin.getCasterManager().casters().contains(this);
 	}
 	
 	// Return the player instance of this caster;
@@ -159,7 +223,7 @@ public class Caster implements Tracer {
 			int index = passiveAbilities.indexOf(activeAbility);
 			if (passiveAbilities.size() > index + 1) activeAbility = passiveAbilities.get(index + 1);
 			else activeAbility = passiveAbilities.get(0);
-			player.sendMessage("New Ability: " + activeAbility.itemName);
+			player.sendMessage("New Ability: " + activeAbility.getItemName());
 			return true;
 		}
 
@@ -170,24 +234,24 @@ public class Caster implements Tracer {
 	public boolean handleRightClick() {
 		
 		// If player has an ability in main hand, select the ability;
-		if (isAbility(mainItem)) {
-			activeAbility = Ability.fromMapName(mainItem.getItemMeta().getDisplayName());
-			player.sendMessage("New Ability: " + activeAbility.itemName);
+		if (AbilityScroll.isAbility(mainItem)) {
+			activeAbility = AbilityScroll.fromItem(mainItem);
+			player.sendMessage("New Ability: " + activeAbility.getItemName());
 			return true;
 		}
 		
-		if (isSpell(mainItem) && isSpell(offItem)) return false;
-		if (isSpell(mainItem) && !offItem.getType().equals(Material.AIR)) return false;
-		if (isSpell(offItem) && !mainItem.getType().equals(Material.AIR)) return false;
+		if (Spellbook.isSpell(mainItem) && Spellbook.isSpell(offItem)) return false;
+		if (Spellbook.isSpell(mainItem) && !offItem.getType().equals(Material.AIR)) return false;
+		if (Spellbook.isSpell(offItem) && !mainItem.getType().equals(Material.AIR)) return false;
 		
 		// If player has a staff in offhand, cast spell;
-		if (isSpell(mainItem) && canCastSpell()) {
+		if (Spellbook.isSpell(mainItem) && canCastSpell()) {
 			activeSpell.cast(plugin, player);
 			return true;
 		}
 		
 		// If player has a staff in offhand, cast spell;
-		if (isSpell(offItem) && canCastSpell()) {
+		if (Spellbook.isSpell(offItem) && canCastSpell()) {
 			activeSpell.cast(plugin, player);
 			return true;
 		}
@@ -201,9 +265,11 @@ public class Caster implements Tracer {
 	// Check if the player can execute anything by double right clicking;
 	public boolean handleDoubleRightClickEvent() {
 		if (isBow(mainItem) && canCastAbility()) {
-			if (activeAbility.equals(Ability.VOLLEY)) {
-				volley = (Volley) activeAbility.cast(plugin, player);
-			} else activeAbility.cast(plugin, player);
+			if (activeAbility.equals(AbilityScroll.VOLLEY)) {
+				volley = (VolleyAbility) activeAbility.cast(plugin, player);
+			}
+			else activeAbility.cast(plugin, player);
+			trace(activeAbility);
 			return true;
 		}
 		
@@ -212,7 +278,7 @@ public class Caster implements Tracer {
 	
 	// Check if the player can execute anything by dual clicking;
 	public boolean handleDualClickEvent() {
-		if ( (isSpell(mainItem)|isSpell(offItem)) && canCastSpell() ) {
+		if ( (Spellbook.isSpell(mainItem)|Spellbook.isSpell(offItem)) && canCastSpell() ) {
 			activeSpell.dualCast(plugin, player);
 		}
 		return false;
@@ -221,10 +287,12 @@ public class Caster implements Tracer {
 	/// -===- ABILITY CODE -===- ///
 	
 		// -- Ability Variables -- //
-	private Ability activeAbility;
-	private List<Ability> passiveAbilities;
-	public boolean hasActivedVolley;
-	public Volley volley;
+	private AbilityScroll activeAbility;
+	private List<AbilityScroll> passiveAbilities;
+	public boolean hasActivatedVolley;
+	public boolean hasActivatedHoming;
+	public VolleyAbility volley;
+	public HomingAbility homing;
 	
 	// -- Ability Methods -- //
 	
@@ -294,14 +362,6 @@ public class Caster implements Tracer {
 		mainItem.setDurability((short) (mainItem.getDurability() + 1));
 	}
 	
-	// Checks if a particular item is considered an ability;
-	private boolean isAbility(ItemStack item) {
-		if (item.getAmount() != 1) return false;
-		if (!item.getType().equals(Material.EMPTY_MAP)) return false;
-		if (!item.getItemMeta().hasEnchant(new Glow(80))) return false;
-		return true;
-	}
-	
 	// Checks if a particular item is considered a bow;
 	private boolean isBow(ItemStack item) {
 		if (!item.getType().equals(Material.BOW)) return false;
@@ -335,16 +395,8 @@ public class Caster implements Tracer {
 		if (activeSpell == null) return false;
 		if (player.getCooldown(Material.BOOK) > 0) return false;
 		if (player.getGameMode().equals(GameMode.CREATIVE)) return true;
-		if (getTotalMana() >= activeSpell.cost) return true;
+		if (getTotalMana() >= activeSpell.getCost()) return true;
 		return false;
-	}
-	
-	// Check if a particular item is considered a spell;
-	private boolean isSpell(ItemStack item) {
-		if (item.getAmount() != 1) return false;
-		if (!item.getType().equals(Material.BOOK)) return false;
-		if (!item.getItemMeta().hasEnchant(new Glow(80))) return false;
-		return true;
 	}
 	
 	// Decrease the players' mana;

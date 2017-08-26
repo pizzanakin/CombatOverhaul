@@ -1,96 +1,103 @@
 package net.libercraft.combatoverhaul;
 
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.File;
+import java.io.IOException;
 
-import org.bukkit.enchantments.Enchantment;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitRunnable;
 
-import net.libercraft.combatoverhaul.player.Caster;
-import net.libercraft.combatoverhaul.player.GetCommand;
-import net.libercraft.combatoverhaul.player.InputReader;
-import net.libercraft.combatoverhaul.player.ListenClass;
+import net.libercraft.combatoverhaul.ability.AbilityScroll;
+import net.libercraft.combatoverhaul.managers.AltarManager;
+import net.libercraft.combatoverhaul.managers.CasterManager;
+import net.libercraft.combatoverhaul.spell.Spellbook;
 
-public class Main extends JavaPlugin implements Listener, Tracer {
+public class Main extends JavaPlugin implements CommandExecutor {
 
-	final Main plugin = this;
-	private List<Caster> casters;
+	private AltarManager altarManager;
+	private CasterManager casterManager;
 	
 	@Override
 	public void onEnable() {
-		this.getServer().getPluginManager().registerEvents(this, this);
-		this.getServer().getPluginManager().registerEvents(new ListenClass(this), this);
-		this.getServer().getPluginManager().registerEvents(new InputReader(this), this);
-		this.getCommand("get").setExecutor(new GetCommand(this));
+
+		// Create a reference to the datafile
+		File datafile = new File(getDataFolder(), "data.yml");
 		
-		// Register the glow enchantment;
-		try {
-            Field f = Enchantment.class.getDeclaredField("acceptingNew");
-            f.setAccessible(true);
-            f.set(null, true);
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-        }
-        
-        try {
-            Glow glow = new Glow(80);
-            Enchantment.registerEnchantment(glow);
-        }
-        catch (IllegalArgumentException e){
-        	
-        }
-        catch(Exception e){
-            e.printStackTrace();
-        }
-        
-        casters = new ArrayList<Caster>();
-        
-        new BukkitRunnable() {
-			@Override
-			public void run() {
-				for (Player player:getServer().getOnlinePlayers()) {
-					if (getCaster(player) != null) continue;
-					addCaster(player);
-				}
-			}
-        }.runTaskTimer(this, 0, 1);
+		// Make sure the data file exists
+		if (!datafile.exists()) {
+			datafile.getParentFile().mkdirs();
+			saveResource("data.yml", false);
+		}
+		
+		altarManager = new AltarManager(this);
+		try  {
+			altarManager.load(datafile);
+		} catch (InvalidConfigurationException | IOException e) {
+			e.printStackTrace();
+		}
+
+		altarManager.loadAltars();
+		
+		
+		casterManager = new CasterManager(this);
+		
+		this.getServer().getPluginManager().registerEvents(new ArrowListener(this), this);
+		this.getServer().getPluginManager().registerEvents(casterManager, this);
+		this.getServer().getPluginManager().registerEvents(altarManager, this);
+		this.getCommand("get").setExecutor(this);
 	}
 	
 	@Override
 	public void onDisable() {
+		altarManager.storeAltars();
 	}
-	
-	public List<Caster> getCasters() {
-		return casters;
-	}
-	
-	// Return the caster instance of the player;
-	public Caster getCaster(Player player) {
-		for (Caster caster:casters) {
-			if (caster.getPlayer() != player) continue;
-			return caster;
+
+	@Override
+	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+		if (!(sender instanceof Player)) return true;
+		Player player = (Player) sender;
+		
+		ItemStack item = null;
+		switch (args[0]) {
+		case "spell":
+			
+			// Get the spell
+			for (Spellbook spell:Spellbook.values()) {
+				if (!spell.name().equalsIgnoreCase(args[1])) continue;
+				item = spell.create();
+			}
+			if (item == null) {
+				player.sendMessage("That spell does not exist.");
+				return true;
+			}
+			break;
+		case "ability":
+			for (AbilityScroll ability:AbilityScroll.values()) {
+				if (!ability.name().equalsIgnoreCase(args[1])) continue;
+				item = ability.create();
+			}
+			if (item == null) {
+				player.sendMessage("That ability does not exist.");
+				return true;
+			}
+			break;
+		default:
+			return false;
 		}
-		return null;
+
+		player.getInventory().addItem(item);
+		return true;
 	}
 	
-	// Add a caster instance of the player;
-	private void addCaster(Player player) {
-		casters.add(new Caster(player, this));
+	public AltarManager getAltarManager() {
+		return altarManager;
 	}
 	
-	// Remove the caster instance of the player;
-	@EventHandler
-	private void removeCaster(PlayerQuitEvent e) {
-		for (int i = 0; i < casters.size(); i++) {
-			if (casters.get(i).getPlayer() != e.getPlayer()) continue;
-			casters.remove(i);
-		}
+	public CasterManager getCasterManager() {
+		return casterManager;
 	}
 }
